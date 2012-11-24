@@ -43,7 +43,7 @@ fullschema = Schema({
                     required('lat'): all(float, range(min=-180, max=180)),
                     required('lon'): all(float, range(min=-90, max=90)),
                     required('bearing'): all(int, range(min=0, max=359)),
-                    required('accuracy'): all(int, range(min=0))
+                    required('accuracy'): all(float, range(min=0))
                 }
             ]
         }
@@ -83,4 +83,4 @@ def get_bearing(buoy_id):
         abort(404, 'No buoy with id %s' % buoy_id)
     return str(entity)
 
-run(host='0.0.0.0', port=8080, debug=True)
+run(host='0.0.0.0', port=80, debug=True)
