@@ -1,5 +1,5 @@
 # SocialBearing Server Component
-# Copyright (C) 2011-2012 
+# Copyright (C) 2011-2012
 #  * riot <riot@hackerfleet.org>
 #  * cketti <cketti@c-base.org>
 #
@@ -23,7 +23,7 @@ from bottle import route, run, request, abort
 from pymongo import Connection
 from bson.objectid import ObjectId
 
-from voluptuous import Schema, required, all, length, range
+from voluptuous import Schema, required, all, range, match
 
 connection = Connection('localhost', 27017)
 db = connection.socialbearing
@@ -31,9 +31,23 @@ db = connection.socialbearing
 ver = "v1"
 
 fullschema = Schema({
-    required('device_uuid'): all(str, length(min=36, max=36)),
-    'device_model': str,
-    required('buoys'): [{}],
+    required('device_uuid'): match(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'),
+    'device_model': unicode,
+    required('buoys'): [
+        {
+            required('buoy_type'): unicode,
+            'buoy_id': unicode,
+            required('bearings'): [
+                {
+                    required('timestamp'): all(long, range(min=0)),
+                    required('lat'): all(float, range(min=-180, max=180)),
+                    required('lon'): all(float, range(min=-90, max=90)),
+                    required('bearing'): all(int, range(min=0, max=359)),
+                    required('accuracy'): all(int, range(min=0))
+                }
+            ]
+        }
+    ],
 })
 
 @route('/', method='GET')
@@ -50,10 +64,15 @@ def post_bearing():
         abort(400, 'No data received')
     entity = json.loads(data)
 
-    #if not entity.has_key('_id'):
-    #    abort(400, 'No _id specified')
+    # Validate input
     try:
-        db['bearings'].save(entity)
+        validated = fullschema(entity)
+    except Exception, e:
+        print e
+        abort(400, "Invalid input data")
+
+    try:
+        db['bearings'].save(validated)
     except ValidationError as ve:
         abort(400, str(ve))
 
